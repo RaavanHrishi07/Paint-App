@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import colorchooser, simpledialog
+from tkinter import colorchooser, filedialog, messagebox, simpledialog
 from tkinter import font as tkfont
 
 
@@ -23,9 +23,12 @@ class PaintApp:
 
         self.start_x = None
         self.start_y = None
+        self.last_x = None
+        self.last_y = None
         self.preview_item = None
 
         self._build_interface()
+        self._build_menu()
         self._bind_events()
 
     def _build_interface(self):
@@ -59,6 +62,12 @@ class PaintApp:
 
         tk.Button(
             toolbar,
+            text="Save",
+            command=self.save_drawing,
+        ).pack(side=tk.LEFT, padx=3)
+
+        tk.Button(
+            toolbar,
             text="Clear",
             command=self.clear_canvas,
         ).pack(side=tk.LEFT, padx=3)
@@ -87,6 +96,36 @@ class PaintApp:
             padx=8,
             pady=(0, 8),
         )
+
+    def _build_menu(self):
+        """Create the application menu."""
+        menu_bar = tk.Menu(self.root)
+
+        file_menu = tk.Menu(
+            menu_bar,
+            tearoff=0,
+        )
+
+        file_menu.add_command(
+            label="Save",
+            command=self.save_drawing,
+        )
+        file_menu.add_separator()
+        file_menu.add_command(
+            label="Clear",
+            command=self.clear_canvas,
+        )
+        file_menu.add_command(
+            label="Exit",
+            command=self.root.destroy,
+        )
+
+        menu_bar.add_cascade(
+            label="File",
+            menu=file_menu,
+        )
+
+        self.root.config(menu=menu_bar)
 
     def _bind_events(self):
         """Bind mouse events to the drawing canvas."""
@@ -123,6 +162,37 @@ class PaintApp:
     def clear_canvas(self):
         """Remove every drawing from the canvas."""
         self.canvas.delete("all")
+
+    def save_drawing(self):
+        """Save the current canvas as a PostScript file."""
+        file_path = filedialog.asksaveasfilename(
+            title="Save Drawing",
+            defaultextension=".ps",
+            filetypes=[
+                ("PostScript files", "*.ps"),
+                ("All files", "*.*"),
+            ],
+        )
+
+        if not file_path:
+            return
+
+        try:
+            self.canvas.postscript(
+                file=file_path,
+                colormode="color",
+            )
+
+            messagebox.showinfo(
+                "Drawing Saved",
+                f"Drawing saved successfully:\n{file_path}",
+            )
+
+        except tk.TclError as error:
+            messagebox.showerror(
+                "Save Error",
+                f"Unable to save the drawing:\n{error}",
+            )
 
     def on_mouse_down(self, event):
         """Handle the beginning of a mouse action."""

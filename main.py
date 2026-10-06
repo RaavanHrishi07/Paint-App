@@ -38,6 +38,7 @@ class PaintApp:
 
         tools = [
             ("Pencil", "pencil"),
+            ("Eraser", "eraser"),
             ("Line", "line"),
             ("Rectangle", "rectangle"),
             ("Oval", "oval"),
@@ -60,6 +61,22 @@ class PaintApp:
             command=self.choose_color,
         ).pack(side=tk.LEFT, padx=3)
 
+        tk.Label(
+            toolbar,
+            text="Size:",
+        ).pack(side=tk.LEFT, padx=(10, 3))
+
+        self.brush_size = tk.IntVar(value=self.line_width)
+
+        tk.Spinbox(
+            toolbar,
+            from_=1,
+            to=50,
+            width=4,
+            textvariable=self.brush_size,
+            command=self.update_brush_size,
+        ).pack(side=tk.LEFT)
+
         tk.Button(
             toolbar,
             text="Save",
@@ -80,7 +97,7 @@ class PaintApp:
 
         self.status_label = tk.Label(
             toolbar,
-            text="Tool: Pencil",
+            text="Tool: Pencil | Size: 3",
             anchor="w",
         )
         self.status_label.pack(side=tk.LEFT, padx=15)
@@ -145,9 +162,33 @@ class PaintApp:
     def select_tool(self, tool):
         """Select the active drawing tool."""
         self.current_tool = tool
+        self._update_status()
+
+    def _update_status(self):
+        """Update the status text."""
         self.status_label.config(
-            text=f"Tool: {tool.title()}"
+            text=(
+                f"Tool: {self.current_tool.title()} | "
+                f"Size: {self.line_width}"
+            )
         )
+
+    def update_brush_size(self):
+        """Update the current drawing size."""
+        try:
+            size = int(self.brush_size.get())
+
+            if size < 1:
+                size = 1
+            elif size > 50:
+                size = 50
+
+            self.line_width = size
+            self.brush_size.set(size)
+            self._update_status()
+
+        except (TypeError, ValueError):
+            self.brush_size.set(self.line_width)
 
     def choose_color(self):
         """Open the colour picker."""
@@ -200,26 +241,23 @@ class PaintApp:
         self.start_y = event.y
         self.preview_item = None
 
-        if self.current_tool == "pencil":
+        if self.current_tool in {"pencil", "eraser"}:
             self.last_x = event.x
             self.last_y = event.y
 
     def on_mouse_drag(self, event):
         """Handle mouse movement while the left button is held."""
         if self.current_tool == "pencil":
-            self.canvas.create_line(
-                self.last_x,
-                self.last_y,
-                event.x,
-                event.y,
-                fill=self.current_color,
-                width=self.line_width,
-                capstyle=tk.ROUND,
-                smooth=True,
+            self._draw_freehand(
+                event,
+                self.current_color,
             )
 
-            self.last_x = event.x
-            self.last_y = event.y
+        elif self.current_tool == "eraser":
+            self._draw_freehand(
+                event,
+                BACKGROUND_COLOR,
+            )
 
         elif self.current_tool in {
             "line",
@@ -228,6 +266,22 @@ class PaintApp:
             "arc",
         }:
             self._draw_preview(event)
+
+    def _draw_freehand(self, event, colour):
+        """Draw a freehand line using the selected colour."""
+        self.canvas.create_line(
+            self.last_x,
+            self.last_y,
+            event.x,
+            event.y,
+            fill=colour,
+            width=self.line_width,
+            capstyle=tk.ROUND,
+            smooth=True,
+        )
+
+        self.last_x = event.x
+        self.last_y = event.y
 
     def on_mouse_up(self, event):
         """Handle the end of a mouse action."""
@@ -350,7 +404,7 @@ class PaintApp:
         if text:
             text_font = tkfont.Font(
                 family="Arial",
-                size=18,
+                size=max(10, self.line_width * 4),
                 weight="bold",
             )
 
